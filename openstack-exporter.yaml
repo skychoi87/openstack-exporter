@@ -1,0 +1,61 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: prom-openstack-exporter
+  namespace: monitoring
+  annotations:
+      prometheus.io/scrape: 'true'
+spec:
+  selector:
+    app: prom-openstack-exporter
+  type: NodePort
+  ports:
+    - port: 9103
+      targetPort: 9103
+      nodePort: 32103
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prom-openstack-conf
+  namespace: monitoring
+data:
+  OS_AUTH_URL: "http://keystone-api.openstack.svc.cluster.local:35357/v3"
+  OS_PASSWORD: "password"
+  OS_PROJECT_NAME: "admin"
+  OS_USERNAME: "admin"
+  OS_USER_DOMAIN_NAME: "default"
+  OS_REGION_NAME: "RegionOne"
+  TIMEOUT_SECONDS: "20"
+  OS_POLLING_INTERVAL: "60"
+  OS_RETRIES: "1"
+  LISTEN_PORT: "9103"
+  OS_CPU_OC_RATIO: "1.5"
+  OS_RAM_OC_RATIO: "1"
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: prom-openstack-exporter
+  namespace: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: prom-openstack-exporter
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: prom-openstack-exporter
+    spec:
+      containers:
+      - name: prom-openstack-exporter
+        image: rakeshpatnaik/prometheus-openstack-exporter:v0.2
+        ports:
+        - name: metric
+          containerPort: 9103
+        env:
+        envFrom:
+          - configMapRef:
+              name: prom-openstack-conf
+
